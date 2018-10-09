@@ -12,6 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.rainbow.solar.rest.dto.HourlyElectricityDto;
 import org.rainbow.solar.rest.err.HourlyElectricityNotFoundError;
+import org.rainbow.solar.rest.err.HourlyElectricityPanelMismatchError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingDateRequiredError;
 import org.rainbow.solar.rest.err.HourlyElectricityReadingRequiredError;
 import org.rainbow.solar.rest.err.PanelNotFoundError;
@@ -198,12 +199,12 @@ public class HourlyElectricityControllerTests extends ControllerTests {
 		HttpEntity<Object> hourlyElectricity = new JsonHttpEntityBuilder().setProperty("generatedElectricity", "500")
 				.setProperty("readingAt", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)).build();
 
-		ResponseEntity<HourlyElectricityReadingRequiredError> response = template.exchange(uri, HttpMethod.PUT,
-				hourlyElectricity, HourlyElectricityReadingRequiredError.class);
+		ResponseEntity<HourlyElectricityPanelMismatchError> response = template.exchange(uri, HttpMethod.PUT,
+				hourlyElectricity, HourlyElectricityPanelMismatchError.class);
 
 		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
 
-		HourlyElectricityReadingRequiredError error = response.getBody();
+		HourlyElectricityPanelMismatchError error = response.getBody();
 		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_PANEL_MISMATCH.value(), error.getCode());
 		Assert.assertEquals(
 				String.format(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.panel.mismatch"),
@@ -211,6 +212,27 @@ public class HourlyElectricityControllerTests extends ControllerTests {
 				error.getMessage());
 	}
 
+	@Test
+	public void delete_HourlyElectricityNotGeneratedByPanel_UnprocessableEntityErrorReturned() throws Exception {
+		Long panelId = 2L;
+		Long hourlyElectricityId = 1L;
+
+		String uri = String.format("/api/panels/%s/hourly/%s", panelId, hourlyElectricityId);
+
+		ResponseEntity<HourlyElectricityPanelMismatchError> response = template.exchange(uri, HttpMethod.DELETE, null,
+				HourlyElectricityPanelMismatchError.class);
+		
+		Assert.assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+
+		HourlyElectricityPanelMismatchError error = response.getBody();
+		Assert.assertEquals(SolarErrorCode.HOURLY_ELECTRICITY_PANEL_MISMATCH.value(), error.getCode());
+		Assert.assertEquals(
+				String.format(ExceptionMessagesResourceBundle.getMessage("hourly.electricity.panel.mismatch"),
+						hourlyElectricityId, panelId),
+				error.getMessage());
+	}
+
+	
 	@Test
 	public void delete_PanelIdAndHourlyElectricityIdGiven_HourlyElectricityDeleted() {
 		String uri = "/api/panels/1/hourly/1";
